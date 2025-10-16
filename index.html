@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS - AI秘書</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        h1 {
+            font-size: 32px;
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        #result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        #result.success {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+        }
+        
+        #result.error {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+        }
+        
+        #result.processing {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 JARVIS</h1>
+        <p class="subtitle">AI秘書システム - タスクを入力して実行ボタンを押してください</p>
+        
+        <textarea 
+            id="task" 
+            placeholder="例：免許の失効再交付を受けたい、尼崎市に住んでます"
+        ></textarea>
+        
+        <button onclick="executeTask()" id="executeBtn">
+            ▶️ 実行
+        </button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function executeTask() {
+            const task = document.getElementById('task').value.trim();
+            const resultDiv = document.getElementById('result');
+            const btn = document.getElementById('executeBtn');
+            
+            if (!task) {
+                showResult('error', '❌ タスクを入力してください');
+                return;
+            }
+            
+            // ボタン無効化
+            btn.disabled = true;
+            btn.textContent = '処理中...';
+            
+            // 処理中表示
+            showResult('processing', '<div class="loader"></div>ジャービスが処理中です...');
+            
+            try {
+                const response = await fetch('https://paina.app.n8n.cloud/webhook-test/9f915b95-0288-4a69-8390-b130051f95e9e', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        task: task,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showResult('success', '✅ タスクを受け付けました！<br><br>' + 
+                        (data.message || 'ジャービスが処理を開始しました。'));
+                } else {
+                    showResult('error', '❌ エラーが発生しました（' + response.status + '）');
+                }
+            } catch (error) {
+                showResult('error', '❌ 通信エラー: ' + error.message);
+            } finally {
+                // ボタン再有効化
+                btn.disabled = false;
+                btn.textContent = '▶️ 実行';
+            }
+        }
+        
+        function showResult(type, message) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = type;
+            resultDiv.innerHTML = message;
+            resultDiv.style.display = 'block';
+        }
+        
+        // Enterキーでの送信（Shift+Enterで改行）
+        document.getElementById('task').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                executeTask();
+            }
+        });
+    </script>
+</body>
+</html>
